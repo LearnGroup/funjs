@@ -1,7 +1,7 @@
 
 /**
  * Funjs is a tool sets for js programmer to write 
- * lazy, functional programes
+ * lazy, functional programs
  */
 
 var funjs = {};
