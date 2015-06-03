@@ -26,54 +26,76 @@ var funjs = {};
 
 (function(funjs) {
   
-  /**
-   * wrap a iterable object to funjs iterator
-   */
-  funjs.wrap = function(obj) {
-    
-  };
-  
-  funjs.IteratorError = function(err) {
-  };
-  
-  funjs.end = {
-    "value": null,
-    "hasNext": false
-  };
-  
-  /**
-   * map 
-   * @param func, a mapping function
-   * @param iter, a iterator
-   * @return another lazy iterator 
-   */
-  funjs.map = function(func, iter) {
+  funjs.iter_wrapper = function(gen, value, param, state) {
     return {
-      "next": function() {
-        var item = iter.next();
-        return {
-          "value": func(item.value),
-          "hasNext": item.hasNext
-        };
-      }
+      "gen": gen, // return a iterator contains next value
+      "param": param, // param 
+      "state": state, // state
+      "value": value, // return the value of iterator
+      "next": function() { // public interface to iterate next
+        return this.gen(param, state);
+      }, 
+      "getValue": function() { // public interface to get value
+        return this.value(param, state);
+      },
     };
   };
   
-  /**
-   * Take the head of iterator
-   * @param iter, iterator
-   * @return iter value, if not iterable throw an error
-   */
-  funjs.head = function(iter) {
-    return iter.next().value;
+  funjs.nil_iter = funjs.iter_wrapper(null, function () {
+    return null;
+  }, null, null);
+  
+  funjs.array_iter = function(arr) {
+    var value_func = function(param, state) {
+      return param[state];
+    };
+    
+    var gen_func = function(param, state) {
+      if (1 + state == param.length) {
+        return funjs.nil_iter;
+      } else {
+        return funjs.iter_wrapper(gen_func, value_func, param, state + 1);
+      }
+    };
+    
+    return funjs.iter_wrapper(gen_func, value_func, arr, 0);
   };
   
-  // iter should be immutable? using symbol?
-  funjs.tail = function(iter) {
-    iter.next();
-    return iter;
+  funjs.map_iter = function(transform, iter) {
+    var value_func = function(param, state) {
+      var v = transform(iter.value(param, state));
+      return v;
+    };
+    
+    var map_iter_gen = function(param, state) {
+      var next_iter = iter.gen(param, state);
+      if (next_iter == funjs.nil_iter) {
+        return next_iter;
+      } else {
+        return funjs.iter_wrapper(map_iter_gen, value_func, next_iter.param, next_iter.state);
+      }
+    };
+    
+    return funjs.iter_wrapper(map_iter_gen, value_func, iter.param, iter.state);
+  };
+  
+  funjs.map = function(transform, list) {
+    if (Array.isArray(list)) {
+      return funjs.map_iter(transform, funjs.array_iter(list));
+    }
   };
   
 }(funjs));
 
-console.log();
+//console.log(funjs);
+
+var iter = funjs.map(function(v) { return v + 1; }, [1, 2, 3, 4]);
+
+var res = [];
+while (iter != funjs.nil_iter) {
+  res.push(iter.getValue());
+  iter = iter.next();
+}
+
+console.log(iter);
+console.log('res', res);
