@@ -57,25 +57,31 @@ var funjs = {};
   };
   
   funjs.map = function(transform, list) {
-    var iter = list;
-    if (Array.isArray(list)) {
-      iter = funjs.array_iter(list);
+    if (list != null) {
+      return funjs.map(transform)(list);
     }
-
-    var map_iter_value = function(param, state) {
-      return transform(iter._value(param, state));
-    };
     
-    var map_iter_gen = function(param, state) {
-      var next_iter = iter._gen(param, state);
-      if (next_iter == funjs.nil_iter) {
-        return next_iter;
-      } else {
-        return funjs.iter_wrapper(map_iter_gen, map_iter_value, next_iter._param, next_iter._state);
+    return function(list) {
+      var iter = list;
+      if (Array.isArray(list)) {
+        iter = funjs.array_iter(list);
       }
+  
+      var map_iter_value = function(param, state) {
+        return transform(iter._value(param, state));
+      };
+      
+      var map_iter_gen = function(param, state) {
+        var next_iter = iter._gen(param, state);
+        if (next_iter == funjs.nil_iter) {
+          return next_iter;
+        } else {
+          return funjs.iter_wrapper(map_iter_gen, map_iter_value, next_iter._param, next_iter._state);
+        }
+      };
+      
+      return funjs.iter_wrapper(map_iter_gen, map_iter_value, iter._param, iter._state);
     };
-    
-    return funjs.iter_wrapper(map_iter_gen, map_iter_value, iter._param, iter._state);
   };
   
 }(funjs));
@@ -90,3 +96,5 @@ console.log('arr', funjs.to_array(arr_iter));
 
 var map_iter = funjs.map(function(v) { return v + 1; }, array);
 console.log(array, ' -> ', funjs.to_array(map_iter));
+
+console.log(funjs.map(function(v) {}));
