@@ -46,7 +46,7 @@ var funjs = {};
     };
     
     var gen_func = function(param, state) {
-      if (1 + state == param.length) {
+      if (1 + state === param.length) {
         return funjs.nil_iter;
       } else {
         return funjs.iter_wrapper(gen_func, array_iter_value, param, state + 1);
@@ -67,34 +67,80 @@ var funjs = {};
         iter = funjs.array_iter(list);
       }
   
-      var map_iter_value = function(param, state) {
+      var map_value = function(param, state) {
         return transform(iter._value(param, state));
       };
       
-      var map_iter_gen = function(param, state) {
+      var map_gen = function(param, state) {
         var next_iter = iter._gen(param, state);
         if (next_iter == funjs.nil_iter) {
           return next_iter;
         } else {
-          return funjs.iter_wrapper(map_iter_gen, map_iter_value, next_iter._param, next_iter._state);
+          return funjs.iter_wrapper(map_gen, map_value, next_iter._param, next_iter._state);
         }
       };
       
-      return funjs.iter_wrapper(map_iter_gen, map_iter_value, iter._param, iter._state);
+      return funjs.iter_wrapper(map_gen, map_value, iter._param, iter._state);
+    };
+  };
+  
+  funjs.take_n = function(n, list) {
+    if (list != null) {
+      return funjs.take_n(n)(list);
+    }
+    
+    return function(list) {
+      var iter = list;
+      if (Array.isArray(list)) {
+        iter = funjs.array_iter(list);
+      }
+      
+      var take_n_value = function(param, state) {
+        return iter._value(param.inner_param, param.inner_state);
+      };
+      
+      var take_n_gen = function(param, state) {
+        if (state - 1 === 0) {
+          return funjs.nil_iter;
+        } else {
+          var next_iter = iter._gen(param.inner_param, param.inner_state);
+          
+          if (next_iter === funjs.nil_iter) {
+            return funjs.nil_iter;
+          }
+          
+          return funjs.iter_wrapper(take_n_gen, take_n_value, {
+            "inner_param": next_iter._param,
+            "inner_state": next_iter._state,
+          }, state - 1);
+        }
+      };
+      
+      return funjs.iter_wrapper(take_n_gen, take_n_value, {
+        "inner_param": iter._param,
+        "inner_state": iter._state,
+      }, n);
     };
   };
   
 }(funjs));
 
-//console.log(funjs);
-
 var array = [1, 2, 3, 4];
 
 var arr_iter = funjs.array_iter(array);
-console.log('arr', funjs.to_array(arr_iter));
+console.log('arr_iter', funjs.to_array(arr_iter));
 
 
 var map_iter = funjs.map(function(v) { return v + 1; }, array);
-console.log(array, ' -> ', funjs.to_array(map_iter));
+console.log('map', array, ' -> ', funjs.to_array(map_iter));
 
-console.log(funjs.map(function(v) {}));
+var take_n_iter = funjs.take_n(2, array);
+console.log('take_n', funjs.to_array(take_n_iter));
+
+var take_n_iter_more = funjs.take_n(12, array);
+console.log('take_n more', funjs.to_array(take_n_iter_more));
+
+var take_map_iter = funjs.take_n(2, funjs.map(function(v) {
+  return v * 10;
+}, array));
+console.log('take_map', funjs.to_array(take_map_iter));
