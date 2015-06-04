@@ -1,5 +1,5 @@
 /**
- * Funjs 
+ * Funjs - a javascript toolset for functional programming fans
  */
 
 var funjs = {};
