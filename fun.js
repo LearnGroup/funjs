@@ -180,17 +180,17 @@ var funjs = {};
   /**
    * func: lambda acc, v -> acc'
    */
-  funjs.reduce = function (func, list, initial) {
-    if (list !== undefined) {
-      return funjs.reduce(func)(list, initial);
+  funjs.reduce = function (func, initial, list) {
+    if (initial !== undefined) {
+      return funjs.reduce(func)(initial, list);
     }
     
-    return function (list, initial) {
-      if (initial !== undefined) {
-        return funjs.reduce(func)(list)(initial);
+    return function (initial, list) {
+      if (list !== undefined) {
+        return funjs.reduce(func)(initial)(list);
       }
       
-      return function (initial) {
+      return function (list) {
         var iter = list;
         if (Array.isArray(list)) {
           iter = funjs.array_iter(list);
@@ -206,6 +206,10 @@ var funjs = {};
       };
     };
   };
+
+  funjs.sum = funjs.reduce(function(acc, v) {
+    return acc + v;
+  }, 0);
 
 } (funjs));
 
@@ -241,4 +245,6 @@ console.log('head of', array, "is", funjs.head(array));
 var tail_iter = funjs.tail(array);
 console.log('tail_iter', tail_iter.force());
 
-console.log('reduce', funjs.reduce(function(acc, v) { return acc + v; }, array, 0));
+console.log('reduce', funjs.reduce(function(acc, v) { return acc + v; }, 0, array));
+
+console.log('sum', funjs.sum(array));
