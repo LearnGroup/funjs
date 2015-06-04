@@ -1,59 +1,51 @@
-
 /**
- * Funjs is a tool sets for js programmer to write 
- * lazy, functional programs
+ * Funjs 
  */
 
 var funjs = {};
 
-(function(funjs) {
-  
-  var LazyIterator = function(gen, value, param, state) {
-    this._gen = gen;
-    this._value = value;
+(function (funjs) {
+  function LazyIterator(gen, value, param, state) {
+    this.gen = gen;
+    this.value = value;
     this._param = param;
     this._state = state;
+  }
+
+  LazyIterator.prototype.getValue = function () {
+    return this.value();
   };
-  
-  LazyIterator.prototype.next = function() {
-    return this._gen(this._param, this._state);
+
+  LazyIterator.prototype.next = function () {
+    return this.gen();
   };
-  
-  LazyIterator.prototype.getValue = function() {
-    return this._value(this._param, this._state);
-  };
-  
-  funjs.iter_wrapper = function(gen, value, param, state) {
-    return new LazyIterator(gen, value, param, state);
-  };
-  
-  funjs.nil_iter = funjs.iter_wrapper(null, function () {
-    return null;
-  }, null, null);
-  
-  funjs.to_array = function(iter) {
-    var res = [];
+
+  LazyIterator.prototype.force = function () {
+    var iter = this, res = [];
+
     while (iter != funjs.nil_iter) {
       res.push(iter.getValue());
       iter = iter.next();
     }
+
     return res;
   };
-  
-  funjs.array_iter = function(arr) {
-    var array_iter_value = function(param, state) {
-      return param[state];
+
+  funjs.nil_iter = new LazyIterator(null, null, null, null);
+
+  funjs.array_iter = function (arr) {
+    var array_iter_value = function () {
+      return this._param[this._state];
     };
-    
-    var gen_func = function(param, state) {
-      if (1 + state === param.length) {
+
+    var array_iter_gen = function () {
+      if (this._state + 1 === this._param.length) {
         return funjs.nil_iter;
-      } else {
-        return funjs.iter_wrapper(gen_func, array_iter_value, param, state + 1);
       }
+      return new LazyIterator(array_iter_gen, array_iter_value, arr, this._state + 1);
     };
-    
-    return funjs.iter_wrapper(gen_func, array_iter_value, arr, 0);
+
+    return new LazyIterator(array_iter_gen, array_iter_value, arr, 0);
   };
   
   funjs.map = function(transform, list) {
@@ -66,24 +58,23 @@ var funjs = {};
       if (Array.isArray(list)) {
         iter = funjs.array_iter(list);
       }
-  
-      var map_value = function(param, state) {
-        return transform(iter._value(param, state));
+      
+      var map_value = function() {
+        return transform(this._state.getValue());
       };
       
-      var map_gen = function(param, state) {
-        var next_iter = iter._gen(param, state);
-        if (next_iter == funjs.nil_iter) {
+      var map_gen = function() {
+        var next_iter = this._state.next();
+        if (next_iter === funjs.nil_iter) {
           return next_iter;
-        } else {
-          return funjs.iter_wrapper(map_gen, map_value, next_iter._param, next_iter._state);
-        }
+        } 
+        return new LazyIterator(map_gen, map_value, null, next_iter);
       };
       
-      return funjs.iter_wrapper(map_gen, map_value, iter._param, iter._state);
+      return new LazyIterator(map_gen, map_value, null, iter);
     };
   };
-  
+
   funjs.take_n = function(n, list) {
     if (list != null) {
       return funjs.take_n(n)(list);
@@ -95,52 +86,40 @@ var funjs = {};
         iter = funjs.array_iter(list);
       }
       
-      var take_n_value = function(param, state) {
-        return iter._value(param.inner_param, param.inner_state);
+      var take_n_value = function() {
+        return this._state.iter.getValue();
       };
       
-      var take_n_gen = function(param, state) {
-        if (state - 1 === 0) {
+      var take_n_gen = function() {
+        if (this._state.cur + 1 === this._param) {
           return funjs.nil_iter;
-        } else {
-          var next_iter = iter._gen(param.inner_param, param.inner_state);
-          
-          if (next_iter === funjs.nil_iter) {
-            return funjs.nil_iter;
-          }
-          
-          return funjs.iter_wrapper(take_n_gen, take_n_value, {
-            "inner_param": next_iter._param,
-            "inner_state": next_iter._state,
-          }, state - 1);
         }
+        var next_iter = this._state.iter.next();
+        if (next_iter === funjs.nil_iter) {
+          return next_iter;
+        }
+        return new LazyIterator(take_n_gen, take_n_value, this._param, {"cur": this._state.cur + 1, "iter": next_iter});
       };
       
-      return funjs.iter_wrapper(take_n_gen, take_n_value, {
-        "inner_param": iter._param,
-        "inner_state": iter._state,
-      }, n);
+      return new LazyIterator(take_n_gen, take_n_value, n, {"cur": 0, "iter": iter});
     };
   };
-  
-}(funjs));
+
+} (funjs));
 
 var array = [1, 2, 3, 4];
 
 var arr_iter = funjs.array_iter(array);
-console.log('arr_iter', funjs.to_array(arr_iter));
-
+console.log('arr_iter', arr_iter.force());
 
 var map_iter = funjs.map(function(v) { return v + 1; }, array);
-console.log('map', array, ' -> ', funjs.to_array(map_iter));
+console.log('map_iter', map_iter.force());
 
 var take_n_iter = funjs.take_n(2, array);
-console.log('take_n', funjs.to_array(take_n_iter));
+console.log('take_n_iter', take_n_iter.force());
 
-var take_n_iter_more = funjs.take_n(12, array);
-console.log('take_n more', funjs.to_array(take_n_iter_more));
+var take_n_more_iter = funjs.take_n(10, array);
+console.log('take_n_more_iter', take_n_more_iter.force());
 
-var take_map_iter = funjs.take_n(2, funjs.map(function(v) {
-  return v * 10;
-}, array));
-console.log('take_map', funjs.to_array(take_map_iter));
+var take_n_map = funjs.take_n(2, funjs.map(function(v) { return v * 10; }, array));
+console.log('take_n_map', take_n_map.force());
