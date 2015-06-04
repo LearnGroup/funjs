@@ -57,7 +57,7 @@ var funjs = {};
   };
 
   funjs.map = function (transform, list) {
-    if (list != null) {
+    if (list !== undefined) {
       return funjs.map(transform)(list);
     }
 
@@ -88,7 +88,7 @@ var funjs = {};
   };
 
   funjs.take_n = function (n, list) {
-    if (list != null) {
+    if (list !== undefined) {
       return funjs.take_n(n)(list);
     }
 
@@ -122,7 +122,7 @@ var funjs = {};
   };
 
   funjs.filter = function (pred, list) {
-    if (list != null) {
+    if (list !== undefined) {
       return funjs.filter(pred)(list);
     }
 
@@ -177,6 +177,36 @@ var funjs = {};
     return iter.next();
   };
 
+  /**
+   * func: lambda acc, v -> acc'
+   */
+  funjs.reduce = function (func, list, initial) {
+    if (list !== undefined) {
+      return funjs.reduce(func)(list, initial);
+    }
+    
+    return function (list, initial) {
+      if (initial !== undefined) {
+        return funjs.reduce(func)(list)(initial);
+      }
+      
+      return function (initial) {
+        var iter = list;
+        if (Array.isArray(list)) {
+          iter = funjs.array_iter(list);
+        }
+        
+        var acc = initial;
+        while (iter !== funjs.nil_iter) {
+          acc = func(acc, iter.getValue());
+          iter = iter.next();
+        }
+        
+        return acc;
+      };
+    };
+  };
+
 } (funjs));
 
 var array = [1, 2, 3, 4];
@@ -210,3 +240,5 @@ console.log('head of', array, "is", funjs.head(array));
 
 var tail_iter = funjs.tail(array);
 console.log('tail_iter', tail_iter.force());
+
+console.log('reduce', funjs.reduce(function(acc, v) { return acc + v; }, array, 0));
