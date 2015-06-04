@@ -30,6 +30,10 @@ var funjs = {};
 
     return res;
   };
+  
+  funjs.make_iter = function (gen, value, param, state) {
+    return new LazyIterator(gen, value, param, state);
+  };
 
   funjs.nil_iter = new LazyIterator(function () {
     throw "nil iterator cannot be iterated";
