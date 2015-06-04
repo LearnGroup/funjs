@@ -30,7 +30,7 @@ var funjs = {};
 
     return res;
   };
-  
+
   funjs.make_iter = function (gen, value, param, state) {
     return new LazyIterator(gen, value, param, state);
   };
@@ -188,30 +188,30 @@ var funjs = {};
     if (initial !== undefined) {
       return funjs.reduce(func)(initial, list);
     }
-    
+
     return function (initial, list) {
       if (list !== undefined) {
         return funjs.reduce(func)(initial)(list);
       }
-      
+
       return function (list) {
         var iter = list;
         if (Array.isArray(list)) {
           iter = funjs.array_iter(list);
         }
-        
+
         var acc = initial;
         while (iter !== funjs.nil_iter) {
           acc = func(acc, iter.getValue());
           iter = iter.next();
         }
-        
+
         return acc;
       };
     };
   };
 
-  funjs.sum = funjs.reduce(function(acc, v) {
+  funjs.sum = funjs.reduce(function (acc, v) {
     return acc + v;
   }, 0);
 
@@ -249,6 +249,6 @@ console.log('head of', array, "is", funjs.head(array));
 var tail_iter = funjs.tail(array);
 console.log('tail_iter', tail_iter.force());
 
-console.log('reduce', funjs.reduce(function(acc, v) { return acc + v; }, 0, array));
+console.log('reduce', funjs.reduce(function (acc, v) { return acc + v; }, 0, array));
 
 console.log('sum', funjs.sum(array));
